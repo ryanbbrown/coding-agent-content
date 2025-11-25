@@ -3,6 +3,7 @@
 ## How to interact
 - Always ask the user any necessary follow up questions about their intent before making changes.
 - If the user interrupts you and asks a question, IMMEDIATELY ANSWER THE QUESTION. Do not use the question as a jumping-off point for additional changes.
+- In general, if the user input has a question mark, do NOT make edits. First, answer their question, reading files if necessary.
 - Any time the user asks you to search the web, delegate to a sub-agent spawned using `Task`, even if it's just a simple search request that will only require a single API call. The sub-agent should use the parallel search 
 
 ## How to write code

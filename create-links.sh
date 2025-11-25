@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script symlinks slash commands and agent instructions to Claude Code and Codex.
+# This script symlinks slash commands, agent instructions, and skills to Claude Code and Codex.
 #
 # For each symlink, the script:
 # 1. Removes any existing symlink at the target location
@@ -10,9 +10,17 @@
 # Configuration - set to true/false to enable/disable linking
 LINK_CLAUDE=true
 LINK_CODEX=false
+LINK_SKILLS=true
 
-# Source directory (run this script from the repo root)
-SOURCE_DIR="$(pwd)/slash-commands"
+# Skills to link from anthropic-skills into the skills folder
+ANTHROPIC_SKILLS_TO_LINK=(
+    "skill-creator"
+)
+
+# Source directories (run this script from the repo root)
+SLASH_COMMANDS_DIR="$(pwd)/slash-commands"
+SKILLS_DIR="$(pwd)/skills"
+ANTHROPIC_SKILLS_DIR="$(pwd)/anthropic-skills"
 
 # Source files - detect which exist
 CLAUDE_MD_FILE="$(pwd)/CLAUDE.md"
@@ -32,78 +40,81 @@ elif [ -f "$AGENTS_MD_FILE" ]; then
     CLAUDE_MD_SOURCE="$AGENTS_MD_FILE"
     AGENTS_MD_SOURCE="$AGENTS_MD_FILE"
 else
-    echo "Warning: Neither CLAUDE.md nor AGENTS.md found in $(pwd), so nothing will be linked."
+    echo "Warning: Neither CLAUDE.md nor AGENTS.md found in $(pwd), so instructions will not be linked."
     CLAUDE_MD_SOURCE=""
     AGENTS_MD_SOURCE=""
 fi
 
-# Target directories
+# Target paths
 CLAUDE_COMMANDS_TARGET="$HOME/.claude/commands"
-CODEX_PROMPTS_TARGET="$HOME/.codex/prompts"
 CLAUDE_MD_TARGET="$HOME/.claude/CLAUDE.md"
+CLAUDE_SKILLS_TARGET="$HOME/.claude/skills"
+CODEX_PROMPTS_TARGET="$HOME/.codex/prompts"
 CODEX_AGENTS_TARGET="$HOME/.codex/AGENTS.md"
 
-# Link for Claude Code
+# Helper function to create a symlink
+create_symlink() {
+    local source="$1"
+    local target="$2"
+
+    if [ -L "$target" ]; then
+        echo "Removing existing symlink at $target"
+        rm "$target"
+    elif [ -e "$target" ]; then
+        echo "Warning: $target exists and is not a symlink. Skipping."
+        return 1
+    fi
+
+    if [ ! -e "$target" ]; then
+        mkdir -p "$(dirname "$target")"
+        ln -s "$source" "$target"
+        echo "Linked $target -> $source"
+    fi
+}
+
+# ====================
+# Slash Commands
+# ====================
 if [ "$LINK_CLAUDE" = true ]; then
-    # Link slash commands
-    if [ -L "$CLAUDE_COMMANDS_TARGET" ]; then
-        echo "Removing existing symlink at $CLAUDE_COMMANDS_TARGET"
-        rm "$CLAUDE_COMMANDS_TARGET"
-    elif [ -e "$CLAUDE_COMMANDS_TARGET" ]; then
-        echo "Warning: $CLAUDE_COMMANDS_TARGET exists and is not a symlink. Skipping."
-    fi
-
-    if [ ! -e "$CLAUDE_COMMANDS_TARGET" ]; then
-        mkdir -p "$(dirname "$CLAUDE_COMMANDS_TARGET")"
-        ln -s "$SOURCE_DIR" "$CLAUDE_COMMANDS_TARGET"
-        echo "Created symlink: $CLAUDE_COMMANDS_TARGET -> $SOURCE_DIR"
-    fi
-
-    # Link CLAUDE.md
-    if [ -n "$CLAUDE_MD_SOURCE" ]; then
-        if [ -L "$CLAUDE_MD_TARGET" ]; then
-            echo "Removing existing symlink at $CLAUDE_MD_TARGET"
-            rm "$CLAUDE_MD_TARGET"
-        elif [ -e "$CLAUDE_MD_TARGET" ]; then
-            echo "Warning: $CLAUDE_MD_TARGET exists and is not a symlink. Skipping."
-        fi
-
-        if [ ! -e "$CLAUDE_MD_TARGET" ]; then
-            ln -s "$CLAUDE_MD_SOURCE" "$CLAUDE_MD_TARGET"
-            echo "Created symlink: $CLAUDE_MD_TARGET -> $CLAUDE_MD_SOURCE"
-        fi
-    fi
+    create_symlink "$SLASH_COMMANDS_DIR" "$CLAUDE_COMMANDS_TARGET"
 fi
 
-# Link for Codex
 if [ "$LINK_CODEX" = true ]; then
-    # Link slash commands (prompts)
-    if [ -L "$CODEX_PROMPTS_TARGET" ]; then
-        echo "Removing existing symlink at $CODEX_PROMPTS_TARGET"
-        rm "$CODEX_PROMPTS_TARGET"
-    elif [ -e "$CODEX_PROMPTS_TARGET" ]; then
-        echo "Warning: $CODEX_PROMPTS_TARGET exists and is not a symlink. Skipping."
-    fi
+    create_symlink "$SLASH_COMMANDS_DIR" "$CODEX_PROMPTS_TARGET"
+fi
 
-    if [ ! -e "$CODEX_PROMPTS_TARGET" ]; then
-        mkdir -p "$(dirname "$CODEX_PROMPTS_TARGET")"
-        ln -s "$SOURCE_DIR" "$CODEX_PROMPTS_TARGET"
-        echo "Created symlink: $CODEX_PROMPTS_TARGET -> $SOURCE_DIR"
-    fi
+# ====================
+# Instructions (CLAUDE.md / AGENTS.md)
+# ====================
+if [ "$LINK_CLAUDE" = true ] && [ -n "$CLAUDE_MD_SOURCE" ]; then
+    create_symlink "$CLAUDE_MD_SOURCE" "$CLAUDE_MD_TARGET"
+fi
 
-    # Link AGENTS.md
-    if [ -n "$AGENTS_MD_SOURCE" ]; then
-        if [ -L "$CODEX_AGENTS_TARGET" ]; then
-            echo "Removing existing symlink at $CODEX_AGENTS_TARGET"
-            rm "$CODEX_AGENTS_TARGET"
-        elif [ -e "$CODEX_AGENTS_TARGET" ]; then
-            echo "Warning: $CODEX_AGENTS_TARGET exists and is not a symlink. Skipping."
+if [ "$LINK_CODEX" = true ] && [ -n "$AGENTS_MD_SOURCE" ]; then
+    create_symlink "$AGENTS_MD_SOURCE" "$CODEX_AGENTS_TARGET"
+fi
+
+# ====================
+# Skills
+# ====================
+if [ "$LINK_SKILLS" = true ]; then
+    # First, link individual skills from anthropic-skills into the skills folder
+    mkdir -p "$SKILLS_DIR"
+    for skill in "${ANTHROPIC_SKILLS_TO_LINK[@]}"; do
+        SKILL_SOURCE="$ANTHROPIC_SKILLS_DIR/$skill"
+        SKILL_TARGET="$SKILLS_DIR/$skill"
+
+        if [ ! -d "$SKILL_SOURCE" ]; then
+            echo "Warning: Skill $skill not found at $SKILL_SOURCE. Skipping."
+            continue
         fi
 
-        if [ ! -e "$CODEX_AGENTS_TARGET" ]; then
-            ln -s "$AGENTS_MD_SOURCE" "$CODEX_AGENTS_TARGET"
-            echo "Created symlink: $CODEX_AGENTS_TARGET -> $AGENTS_MD_SOURCE"
-        fi
+        create_symlink "$SKILL_SOURCE" "$SKILL_TARGET"
+    done
+
+    # Then, link the skills folder to ~/.claude/skills
+    if [ "$LINK_CLAUDE" = true ]; then
+        create_symlink "$SKILLS_DIR" "$CLAUDE_SKILLS_TARGET"
     fi
 fi
 
