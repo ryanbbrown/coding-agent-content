@@ -12,15 +12,9 @@ LINK_CLAUDE=true
 LINK_CODEX=false
 LINK_SKILLS=true
 
-# Skills to link from anthropic-skills into the skills folder
-ANTHROPIC_SKILLS_TO_LINK=(
-    "skill-creator"
-)
-
 # Source directories (run this script from the repo root)
 SLASH_COMMANDS_DIR="$(pwd)/slash-commands"
 SKILLS_DIR="$(pwd)/skills"
-ANTHROPIC_SKILLS_DIR="$(pwd)/anthropic-skills"
 
 # Source files - detect which exist
 CLAUDE_MD_FILE="$(pwd)/CLAUDE.md"
@@ -97,25 +91,8 @@ fi
 # ====================
 # Skills
 # ====================
-if [ "$LINK_SKILLS" = true ]; then
-    # First, link individual skills from anthropic-skills into the skills folder
-    mkdir -p "$SKILLS_DIR"
-    for skill in "${ANTHROPIC_SKILLS_TO_LINK[@]}"; do
-        SKILL_SOURCE="$ANTHROPIC_SKILLS_DIR/$skill"
-        SKILL_TARGET="$SKILLS_DIR/$skill"
-
-        if [ ! -d "$SKILL_SOURCE" ]; then
-            echo "Warning: Skill $skill not found at $SKILL_SOURCE. Skipping."
-            continue
-        fi
-
-        create_symlink "$SKILL_SOURCE" "$SKILL_TARGET"
-    done
-
-    # Then, link the skills folder to ~/.claude/skills
-    if [ "$LINK_CLAUDE" = true ]; then
-        create_symlink "$SKILLS_DIR" "$CLAUDE_SKILLS_TARGET"
-    fi
+if [ "$LINK_SKILLS" = true ] && [ "$LINK_CLAUDE" = true ]; then
+    create_symlink "$SKILLS_DIR" "$CLAUDE_SKILLS_TARGET"
 fi
 
 echo "Done!"
