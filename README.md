@@ -1,4 +1,4 @@
-# Coding Agent Content
+# Global Agent Context
 
 A single repo for all global coding agent configurations. Add/modify files here and run the script to symlink them to the proper locations. Currently supports Claude Code and Codex.
 
